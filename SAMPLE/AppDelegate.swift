@@ -7,6 +7,8 @@
 //
 
 import UIKit
+import RealmSwift
+
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -16,6 +18,30 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(application: UIApplication, didFinishLaunchingWithOptions launchOptions: [NSObject: AnyObject]?) -> Bool {
         // Override point for customization after application launch.
+        
+        // Create our realm instance
+        let realm = try! Realm()
+        if let myStoredObject = realm.objects(TestRealmObject).filter("id > 2").first {
+            
+            // Realm previously stored this object
+            print("Realm previously stored an object... name = \(myStoredObject.name)")
+            
+        } else {
+            
+            print ("Realm hasn't stored this object before...\nCreating object now")
+            
+            // Realm has not yet stored this object... let's store it!
+            let myObjectToStore = TestRealmObject()
+            myObjectToStore.id = 5
+            myObjectToStore.name = "Craig"
+            
+            try! realm.write {
+                realm.add(myObjectToStore)
+            }
+            
+        }
+
+        
         return true
     }
 
@@ -39,6 +65,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func applicationWillTerminate(application: UIApplication) {
         // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
+        
     }
 
 
