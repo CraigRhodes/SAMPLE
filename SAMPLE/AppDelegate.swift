@@ -8,6 +8,8 @@
 
 import UIKit
 import RealmSwift
+import Alamofire
+import SwiftyJSON
 
 
 @UIApplicationMain
@@ -17,30 +19,75 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 
     func application(application: UIApplication, didFinishLaunchingWithOptions launchOptions: [NSObject: AnyObject]?) -> Bool {
-        // Override point for customization after application launch.
         
-        // Create our realm instance
+        // Create a realm (from the RealmSwift framework)
+        // The Realm framework allows us to store variables between app relaunches
+        // The ability to do this is known as data "persistence".
         let realm = try! Realm()
-        if let myStoredObject = realm.objects(TestRealmObject).filter("id > 2").first {
+        
+        // Uncomment to delete the realm object if it is currently stored 
+        //  so that another request will be made
+        /*
+         if let storedRealmObj = realm.objects(TestRealmObject).first {
+            try! realm.write {
+                realm.delete(realm.objects(TestRealmObject).first!)
+            }
+         }
+        */
+        
+        // If our object has not been stored previously, we need to request it
+        if realm.objects(TestRealmObject).count == 0 {
             
-            // Realm previously stored this object
-            print("Realm previously stored an object... name = \(myStoredObject.name)")
+            print("Our object has NOT been stored previously.")
+            print("Sending request for object data.")
+            
+            // Request data asynchronously using the Alamofire framework...
+            //  asynchronous means that this request will launch in a separate thread/dispatch queue
+            //  as we continue past it...
+            // Basically, we're not waiting for the response before continuing on
+            Alamofire.request(.GET, "http://www.mocky.io/v2/56f6fbb7100000950f880256").validate().responseJSON { response in
+                
+                // This part only runs once a response is received
+                
+                // Make sure the requested data was retrieved successfully
+                guard response.result.isSuccess else {
+                    print("Request failed.")
+                    return
+                }
+                
+                // Get data from response using the SwiftyJSON framework
+                let json = JSON(data: response.data!)
+                let id  = json["user"]["id"].intValue
+                let name = json["user"]["name"].stringValue
+                
+                // Create an object to store the data we just got
+                let realmObject = TestRealmObject()
+                realmObject.id = id
+                realmObject.name = name
+                
+                // Use realm to store object
+                let realm = try! Realm()
+                try! realm.write {
+                    realm.add(realmObject)
+                }
+                
+                print("Our realm object (id = \(realmObject.id), name = \(realmObject.name)) has been stored.")
+                print("If you relaunch the app, this request will not be made again.")
+                
+            }
             
         } else {
             
-            print ("Realm hasn't stored this object before...\nCreating object now")
+            // Our object is apparently already stored
+            print("Realm object was previously stored.")
             
-            // Realm has not yet stored this object... let's store it!
-            let myObjectToStore = TestRealmObject()
-            myObjectToStore.id = 5
-            myObjectToStore.name = "Craig"
             
-            try! realm.write {
-                realm.add(myObjectToStore)
-            }
+            let realmObject = realm.objects(TestRealmObject).first!
+            print("Our realm object has id = \(realmObject.id) and name = \(realmObject.name)")
             
         }
-
+        
+        print("Reached the end of application(_:didFinishLaunchingWithOptions:)")
         
         return true
     }
